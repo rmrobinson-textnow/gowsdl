@@ -8,17 +8,12 @@ var opsTmpl = `
 {{range .}}
 	{{$portType := .Name | makePublic}}
 	type {{$portType}} struct {
-		client *SOAPClient
+		client Client
 	}
 
-	func New{{$portType}}(url string, tls bool, auth *BasicAuth) *{{$portType}} {
-		if url == "" {
-			url = {{findServiceAddress .Name | printf "%q"}}
-		}
-		client := NewSOAPClient(url, tls, auth)
-
+	func New{{$portType}}(c Client) *{{$portType}} {
 		return &{{$portType}}{
-			client: client,
+			client: c,
 		}
 	}
 

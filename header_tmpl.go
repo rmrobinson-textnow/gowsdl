@@ -8,14 +8,7 @@ var headerTmpl = `
 package {{.}}
 
 import (
-	"bytes"
-	"crypto/tls"
 	"encoding/xml"
-	"io/ioutil"
-	"log"
-	"math/rand"
-	"net"
-	"net/http"
 	"time"
 
 	{{/*range .Imports*/}}
@@ -26,4 +19,10 @@ import (
 // against "unused imports"
 var _ time.Time
 var _ xml.Name
+
+type Client interface {
+	SetHeader(interface{})
+	Call(string, interface{}, interface{}) error
+}
+
 `

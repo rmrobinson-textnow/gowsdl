@@ -7,14 +7,21 @@ package gowsdl
 var typesTmpl = `
 {{define "SimpleType"}}
 	{{$type := replaceReservedWords .Name | makePublic}}
-	type {{$type}} {{toGoType .Restriction.Base}}
-	const (
-		{{with .Restriction}}
-			{{range .Enumeration}}
-				{{if .Doc}} {{.Doc | comment}} {{end}}
-				{{$type}}{{$value := replaceReservedWords .Value}}{{$value | makePublic}} {{$type}} = "{{goString .Value}}" {{end}}
-		{{end}}
-	)
+
+	{{$exists := $type | checkType}}
+
+	{{if not $exists}}
+		type {{$type}} {{toGoType .Restriction.Base}}
+		const (
+			{{with .Restriction}}
+				{{range .Enumeration}}
+					{{if .Doc}} {{.Doc | comment}} {{end}}
+					{{$type}}{{$value := replaceReservedWords .Value}}{{$value | makePublic}} {{$type}} = "{{goString .Value}}" {{end}}
+			{{end}}
+		)
+
+		{{$ignore := $type | addType}}
+	{{end}}
 {{end}}
 
 {{define "ComplexContent"}}
@@ -88,7 +95,8 @@ var typesTmpl = `
 			{{$name := .Name}}
 			{{with .ComplexType}}
 				type {{$name | replaceReservedWords | makePublic}} struct {
-					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{$name}}\"`" + `
+					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{cleanXmlName $name}}\"`" + `
+
 					{{if ne .ComplexContent.Extension.Base ""}}
 						{{template "ComplexContent" .ComplexContent}}
 					{{else if ne .SimpleContent.Extension.Base ""}}
@@ -108,20 +116,27 @@ var typesTmpl = `
 	{{range .ComplexTypes}}
 		{{/* ComplexTypeGlobal */}}
 		{{$name := replaceReservedWords .Name | makePublic}}
-		type {{$name}} struct {
-			XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{.Name}}\"`" + `
-			{{if ne .ComplexContent.Extension.Base ""}}
-				{{template "ComplexContent" .ComplexContent}}
-			{{else if ne .SimpleContent.Extension.Base ""}}
-				{{template "SimpleContent" .SimpleContent}}
-			{{else}}
-				{{template "Elements" .Sequence}}
-				{{template "Elements" .Choice}}
-				{{template "Elements" .SequenceChoice}}
-				{{template "Elements" .All}}
-				{{template "Attributes" .Attributes}}
-			{{end}}
-		}
+
+		{{$exists := $name | checkType}}
+
+		{{if not $exists}}
+			type {{$name}} struct {
+				XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{cleanXmlName .Name}}\"`" + `
+
+				{{if ne .ComplexContent.Extension.Base ""}}
+					{{template "ComplexContent" .ComplexContent}}
+				{{else if ne .SimpleContent.Extension.Base ""}}
+					{{template "SimpleContent" .SimpleContent}}
+				{{else}}
+					{{template "Elements" .Sequence}}
+					{{template "Elements" .Choice}}
+					{{template "Elements" .SequenceChoice}}
+					{{template "Elements" .All}}
+					{{template "Attributes" .Attributes}}
+				{{end}}
+			}
+			{{$ignore := $name | addType}}
+		{{end}}
 	{{end}}
 {{end}}
 `
