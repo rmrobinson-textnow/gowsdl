@@ -95,7 +95,7 @@ var typesTmpl = `
 			{{$name := .Name}}
 			{{with .ComplexType}}
 				type {{$name | replaceReservedWords | makePublic}} struct {
-					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{cleanXmlName $name}}\"`" + `
+					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{$name}}\"`" + `
 
 					{{if ne .ComplexContent.Extension.Base ""}}
 						{{template "ComplexContent" .ComplexContent}}
@@ -121,7 +121,11 @@ var typesTmpl = `
 
 		{{if not $exists}}
 			type {{$name}} struct {
-				XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{cleanXmlName .Name}}\"`" + `
+				{{$typeName := .Name | lookupElementType}}
+				{{if (and (ne $typeName "") (ne $typeName .Name))}}
+					// Element mapping found, will serialize using element name {{$typeName}} instead of {{.Name}}
+					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{$typeName}}\"`" + `
+				{{end}}
 
 				{{if ne .ComplexContent.Extension.Base ""}}
 					{{template "ComplexContent" .ComplexContent}}

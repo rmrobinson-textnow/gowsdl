@@ -35,6 +35,7 @@ type GoWSDL struct {
 	resolvedXSDExternals  map[string]bool
 	currentRecursionLevel uint8
 	currTypes             map[string]bool
+	currElements          map[string]string
 }
 
 var cacheDir = filepath.Join(os.TempDir(), "gowsdl-cache")
@@ -98,6 +99,7 @@ func NewGoWSDL(file, pkg string, ignoreTLS bool, exportAllTypes bool) (*GoWSDL, 
 		ignoreTLS:    ignoreTLS,
 		makePublicFn: makePublicFn,
 		currTypes:    map[string]bool{},
+		currElements: map[string]string{},
 	}, nil
 }
 
@@ -198,7 +200,7 @@ func (g *GoWSDL) resolveXSDExternals(schema *XSDSchema, u *url.URL) error {
 
 		// Handle local XSD files
 		if location.Scheme == "" {
-			log.Println("Reading", "file", schemaLocation)
+			log.Println("Reading", "XSD file", schemaLocation, "for schema", loc)
 
 			data, err = ioutil.ReadFile(schemaLocation)
 			if err != nil {
@@ -288,6 +290,10 @@ func (g *GoWSDL) resolveXSDExternals(schema *XSDSchema, u *url.URL) error {
 	}
 
 	for _, impts := range schema.Imports {
+		// Skip imports that don't have a location
+		if len(impts.SchemaLocation) < 1 {
+			continue;
+		}
 		if e := download(u, impts.SchemaLocation); e != nil {
 			return e
 		}
@@ -302,6 +308,17 @@ func (g *GoWSDL) resolveXSDExternals(schema *XSDSchema, u *url.URL) error {
 	return nil
 }
 
+func (g *GoWSDL) resolveElementsRefs() {
+	for _, schema := range g.wsdl.Types.Schemas {
+		for _, element := range schema.Elements {
+			if len(element.Name) > 0 && len(element.Type) > 0 {
+				typeName := stripns(element.Type)
+				g.currElements[typeName] = element.Name
+			}
+		}
+	}
+}
+
 func (g *GoWSDL) genTypes() ([]byte, error) {
 	funcMap := template.FuncMap{
 		"toGoType":             toGoType,
@@ -312,13 +329,12 @@ func (g *GoWSDL) genTypes() ([]byte, error) {
 		"comment":              comment,
 		"removeNS":             removeNS,
 		"goString":             goString,
-		"cleanXmlName":         cleanXmlName,
 		"addType":              g.addType,
 		"checkType":            g.checkType,
+		"lookupElementType":    g.lookupElementType,
 	}
 
-	//TODO resolve element refs in place.
-	//g.resolveElementsRefs()
+	g.resolveElementsRefs()
 
 	data := new(bytes.Buffer)
 	tmpl := template.Must(template.New("types").Funcs(funcMap).Parse(typesTmpl))
@@ -341,6 +357,14 @@ func (g *GoWSDL) checkType(name string) bool {
 		return true
 	}
 	return false
+}
+
+func (g *GoWSDL) lookupElementType(name string) string {
+	if typeName, ok := g.currElements[name]; ok {
+		return typeName
+	}
+
+	return ""
 }
 
 func (g *GoWSDL) genOperations() ([]byte, error) {
@@ -491,16 +515,6 @@ func toGoType(xsdType string) string {
 	}
 
 	return "*" + replaceReservedWords(makePublic(t))
-}
-
-func cleanXmlName(name string) string {
-	typeless := strings.TrimSuffix(name, "Type")
-
-	typeless = strings.TrimSuffix(typeless, "Request")
-
-	firstChar := strings.ToLower(string(typeless[0]))
-
-	return firstChar + typeless[1:]
 }
 
 // Given a message, finds its type.

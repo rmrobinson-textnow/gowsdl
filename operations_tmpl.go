@@ -18,12 +18,12 @@ var opsTmpl = `
 	}
 
 	func (service *{{$portType}}) AddHeader(header interface{}) {
-		service.client.AddHeader(header)
+		service.client.AddSoapHeader(header)
 	}
 
 	// Backwards-compatible function: use AddHeader instead
 	func (service *{{$portType}}) SetHeader(header interface{}) {
-		service.client.AddHeader(header)
+		service.client.AddSoapHeader(header)
 	}
 
 	{{range .Operations}}
@@ -38,9 +38,9 @@ var opsTmpl = `
 		// {{range .Faults}}
 		//   - {{.Name}} {{.Doc}}{{end}}{{end}}
 		{{if ne .Doc ""}}/* {{.Doc}} */{{end}}
-		func (service *{{$portType}}) {{makePublic .Name | replaceReservedWords}} ({{if ne $requestType ""}}request *{{$requestType}}{{end}}) (*{{$responseType}}, error) {
+		func (service *{{$portType}}) {{makePublic .Name | replaceReservedWords}} (ctx context.Context, {{if ne $requestType ""}}request *{{$requestType}}{{end}}) (*{{$responseType}}, error) {
 			response := new({{$responseType}})
-			err := service.client.Call("{{$soapAction}}", {{if ne $requestType ""}}request{{else}}nil{{end}}, response)
+			err := service.client.Do(ctx, "{{$soapAction}}", {{if ne $requestType ""}}request{{else}}nil{{end}}, response)
 			if err != nil {
 				return nil, err
 			}
