@@ -75,7 +75,7 @@ type WSDLOperation struct {
 	Doc           string            `xml:"documentation"`
 	Input         WSDLInput         `xml:"input"`
 	Output        WSDLOutput        `xml:"output"`
-	Faults        []*WSDLFault      `xml:"fault"`
+	Fault         WSDLFault         `xml:"fault"`
 	SOAPOperation WSDLSOAPOperation `xml:"http://schemas.xmlsoap.org/wsdl/soap/ operation"`
 }
 

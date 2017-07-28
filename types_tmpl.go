@@ -7,16 +7,23 @@ package gowsdl
 var typesTmpl = `
 {{define "SimpleType"}}
 	{{$type := replaceReservedWords .Name | makePublic}}
-
 	{{$exists := $type | checkType}}
 
 	{{if not $exists}}
-		type {{$type}} {{toGoType .Restriction.Base}}
+		{{if .Doc}} {{.Doc | comment}} {{end}}
+		{{$baseType := toGoType .Restriction.Base}}
+		type {{$type}} {{$baseType}}
 		const (
 			{{with .Restriction}}
 				{{range .Enumeration}}
 					{{if .Doc}} {{.Doc | comment}} {{end}}
-					{{$type}}{{$value := replaceReservedWords .Value}}{{$value | makePublic}} {{$type}} = "{{goString .Value}}" {{end}}
+
+					{{if eq $baseType "string"}}
+						{{$type}}{{$value := replaceReservedWords .Value}}{{$value | makePublic}} {{$type}} = "{{goString .Value}}"
+					{{else}}
+						{{$type}}{{$value := replaceReservedWords .Value}}{{$value | makePublic}} {{$type}} = {{goString .Value}}
+					{{end}}
+				{{end}}
 			{{end}}
 		)
 
@@ -26,7 +33,7 @@ var typesTmpl = `
 
 {{define "ComplexContent"}}
 	{{$baseType := toGoType .Extension.Base}}
-	{{ if $baseType }}
+	{{if $baseType}}
 		{{$baseType}}
 	{{end}}
 
@@ -36,7 +43,8 @@ var typesTmpl = `
 
 {{define "Attributes"}}
 	{{range .}}
-		{{if .Doc}} {{.Doc | comment}} {{end}} {{if not .Type}}
+		{{if .Doc}} {{.Doc | comment}} {{end}}
+		{{if not .Type}}
 			{{ .Name | makeFieldPublic}} {{toGoType .SimpleType.Restriction.Base}} ` + "`" + `xml:"{{.Name}},attr,omitempty"` + "`" + `
 		{{else}}
 			{{ .Name | makeFieldPublic}} {{toGoType .Type}} ` + "`" + `xml:"{{.Name}},attr,omitempty"` + "`" + `
@@ -49,21 +57,26 @@ var typesTmpl = `
 {{end}}
 
 {{define "ComplexTypeInline"}}
-	{{replaceReservedWords .Name | makePublic}} struct {
-	{{with .ComplexType}}
-		{{if ne .ComplexContent.Extension.Base ""}}
-			{{template "ComplexContent" .ComplexContent}}
-		{{else if ne .SimpleContent.Extension.Base ""}}
-			{{template "SimpleContent" .SimpleContent}}
-		{{else}}
-			{{template "Elements" .Sequence}}
-			{{template "Elements" .Choice}}
-			{{template "Elements" .SequenceChoice}}
-			{{template "Elements" .All}}
-			{{template "Attributes" .Attributes}}
+	{{if .SimpleType}}
+		{{if .Doc}} {{.Doc | comment}} {{end}}
+		{{ .Name | makeFieldPublic}} {{toGoType .SimpleType.Restriction.Base}} ` + "`" + `xml:"{{.Name}},omitempty"` + "`" + `
+	{{else}}
+		{{replaceReservedWords .Name | makePublic}} struct {
+		{{with .ComplexType}}
+			{{if ne .ComplexContent.Extension.Base ""}}
+				{{template "ComplexContent" .ComplexContent}}
+			{{else if ne .SimpleContent.Extension.Base ""}}
+				{{template "SimpleContent" .SimpleContent}}
+			{{else}}
+				{{template "Elements" .Sequence}}
+				{{template "Elements" .Choice}}
+				{{template "Elements" .SequenceChoice}}
+				{{template "Elements" .All}}
+				{{template "Attributes" .Attributes}}
+			{{end}}
 		{{end}}
+		} ` + "`" + `xml:"{{.Name}},omitempty"` + "`" + `
 	{{end}}
-	} ` + "`" + `xml:"{{.Name}},omitempty"` + "`" + `
 {{end}}
 
 {{define "Elements"}}
@@ -71,13 +84,12 @@ var typesTmpl = `
 		{{if ne .Ref ""}}
 			{{removeNS .Ref | replaceReservedWords  | makePublic}} {{if eq .MaxOccurs "unbounded"}}[]{{end}}{{.Ref | toGoType}} ` + "`" + `xml:"{{.Ref | removeNS}},omitempty"` + "`" + `
 		{{else}}
-		{{if not .Type}}
-			{{template "ComplexTypeInline" .}}
-		{{else}}
-			{{if .Doc}}
-				{{.Doc | comment}} {{"\n"}}
+			{{if not .Type}}
+				{{template "ComplexTypeInline" .}}
+			{{else}}
+				{{if .Doc}} {{.Doc | comment}} {{end}}
+				{{replaceReservedWords .Name | makeFieldPublic}} {{if and (.MaxOccurs) (ne .MaxOccurs "1")}}[]{{end}}{{.Type | toGoType}} ` + "`" + `xml:"{{.Name}},omitempty"` + "`" + `
 			{{end}}
-			{{replaceReservedWords .Name | makeFieldPublic}} {{if eq .MaxOccurs "unbounded"}}[]{{end}}{{.Type | toGoType}} ` + "`" + `xml:"{{.Name}},omitempty"` + "`" + ` {{end}}
 		{{end}}
 	{{end}}
 {{end}}
@@ -94,6 +106,7 @@ var typesTmpl = `
 			{{/* ComplexTypeLocal */}}
 			{{$name := .Name}}
 			{{with .ComplexType}}
+				{{if .Doc}} {{.Doc | comment}} {{end}}
 				type {{$name | replaceReservedWords | makePublic}} struct {
 					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{$name}}\"`" + `
 
@@ -116,10 +129,10 @@ var typesTmpl = `
 	{{range .ComplexTypes}}
 		{{/* ComplexTypeGlobal */}}
 		{{$name := replaceReservedWords .Name | makePublic}}
-
 		{{$exists := $name | checkType}}
 
 		{{if not $exists}}
+			{{if .Doc}} {{.Doc | comment}} {{end}}
 			type {{$name}} struct {
 				{{$typeName := .Name | lookupElementType}}
 				{{if (and (ne $typeName "") (ne $typeName .Name))}}

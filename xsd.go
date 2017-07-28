@@ -55,6 +55,7 @@ type XSDComplexType struct {
 	XMLName        xml.Name          `xml:"complexType"`
 	Abstract       bool              `xml:"abstract,attr"`
 	Name           string            `xml:"name,attr"`
+	Doc            string            `xml:"annotation>documentation"`
 	Mixed          bool              `xml:"mixed,attr"`
 	Sequence       []XSDElement      `xml:"sequence>element"`
 	Choice         []XSDElement      `xml:"choice>element"`
@@ -110,6 +111,7 @@ type XSDAttribute struct {
 // and information about the values of attributes or text-only elements.
 type XSDSimpleType struct {
 	Name        string         `xml:"name,attr"`
+	Doc         string         `xml:"annotation>documentation"`
 	Restriction XSDRestriction `xml:"restriction"`
 }
 

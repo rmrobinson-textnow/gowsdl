@@ -27,25 +27,21 @@ var opsTmpl = `
 	}
 
 	{{range .Operations}}
-		{{$faults := len .Faults}}
-		{{$requestType := findType .Input.Message | replaceReservedWords | makePublic}}
 		{{$soapAction := findSOAPAction .Name $portType}}
+		{{$requestType := findType .Input.Message | replaceReservedWords | makePublic}}
 		{{$responseType := findType .Output.Message | replaceReservedWords | makePublic}}
+		{{$faultType := findType .Fault.Message | replaceReservedWords | makePublic}}
 
 		{{/*if ne $soapAction ""*/}}
-		{{if gt $faults 0}}
-		// Error can be either of the following types:
-		// {{range .Faults}}
-		//   - {{.Name}} {{.Doc}}{{end}}{{end}}
-		{{if ne .Doc ""}}/* {{.Doc}} */{{end}}
-		func (service *{{$portType}}) {{makePublic .Name | replaceReservedWords}} (ctx context.Context, {{if ne $requestType ""}}request *{{$requestType}}{{end}}) (*{{$responseType}}, error) {
+		func (service *{{$portType}}) {{makePublic .Name | replaceReservedWords}} (ctx context.Context, {{if ne $requestType ""}}request *{{$requestType}}{{end}}) (*{{$responseType}}, *{{$faultType}}, error) {
 			response := new({{$responseType}})
-			err := service.client.Do(ctx, "{{$soapAction}}", {{if ne $requestType ""}}request{{else}}nil{{end}}, response)
+			fault := new({{$faultType}})
+			err := service.client.Do(ctx, "{{$soapAction}}", {{if ne $requestType ""}}request{{else}}nil{{end}}, response, fault)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
-			return response, nil
+			return response, fault, nil
 		}
 		{{/*end*/}}
 	{{end}}

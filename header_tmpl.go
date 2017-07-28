@@ -25,7 +25,7 @@ var _ xml.Name
 
 type Client interface {
 	AddSoapHeader(interface{})
-	Do(context.Context, string, interface{}, interface{}) error
+	Do(context.Context, string, interface{}, interface{}, interface{}) error
 }
 
 `
