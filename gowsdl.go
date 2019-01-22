@@ -374,6 +374,7 @@ func (g *GoWSDL) genOperations() ([]byte, error) {
 		"replaceReservedWords": replaceReservedWords,
 		"makePublic":           g.makePublicFn,
 		"findType":             g.findType,
+		"findFaultType":        g.findFaultType,
 		"findSOAPAction":       g.findSOAPAction,
 		"findServiceAddress":   g.findServiceAddress,
 	}
@@ -515,6 +516,17 @@ func toGoType(xsdType string) string {
 	}
 
 	return "*" + replaceReservedWords(makePublic(t))
+}
+
+// Given a fault message, find its type. If not present, use 'string'
+func (g *GoWSDL) findFaultType(message string) string {
+    t := g.findType(message)
+
+    if len(t) < 1 {
+        t = "string"
+    }
+
+    return t
 }
 
 // Given a message, finds its type.

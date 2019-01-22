@@ -30,7 +30,7 @@ var opsTmpl = `
 		{{$soapAction := findSOAPAction .Name $portType}}
 		{{$requestType := findType .Input.Message | replaceReservedWords | makePublic}}
 		{{$responseType := findType .Output.Message | replaceReservedWords | makePublic}}
-		{{$faultType := findType .Fault.Message | replaceReservedWords | makePublic}}
+		{{$faultType := findFaultType .Fault.Message | replaceReservedWords | makePublic}}
 
 		{{/*if ne $soapAction ""*/}}
 		func (service *{{$portType}}) {{makePublic .Name | replaceReservedWords}} (ctx context.Context, {{if ne $requestType ""}}request *{{$requestType}}{{end}}) (*{{$responseType}}, *{{$faultType}}, error) {
