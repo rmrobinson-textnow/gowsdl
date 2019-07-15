@@ -9,21 +9,14 @@ var opsTmpl = `
 	{{$portType := .Name | makePublic}}
 	type {{$portType}} struct {
 		client Client
+		url string
 	}
 
-	func New{{$portType}}(c Client) *{{$portType}} {
+	func New{{$portType}}(c Client, url string) *{{$portType}} {
 		return &{{$portType}}{
 			client: c,
+			url: url,
 		}
-	}
-
-	func (service *{{$portType}}) AddHeader(header interface{}) {
-		service.client.AddSoapHeader(header)
-	}
-
-	// Backwards-compatible function: use AddHeader instead
-	func (service *{{$portType}}) SetHeader(header interface{}) {
-		service.client.AddSoapHeader(header)
 	}
 
 	{{range .Operations}}
@@ -31,17 +24,40 @@ var opsTmpl = `
 		{{$requestType := findType .Input.Message | replaceReservedWords | makePublic}}
 		{{$responseType := findType .Output.Message | replaceReservedWords | makePublic}}
 		{{$faultType := findFaultType .Fault.Message | replaceReservedWords | makePublic}}
+		{{$operationTypeName := makePublic .Name | replaceReservedWords}}
 
 		{{/*if ne $soapAction ""*/}}
-		func (service *{{$portType}}) {{makePublic .Name | replaceReservedWords}} (ctx context.Context, {{if ne $requestType ""}}request *{{$requestType}}{{end}}) (*{{$responseType}}, *{{$faultType}}, error) {
-			response := new({{$responseType}})
-			fault := new({{$faultType}})
-			err := service.client.Do(ctx, "{{$soapAction}}", {{if ne $requestType ""}}request{{else}}nil{{end}}, response, fault)
-			if err != nil {
-				return nil, nil, err
+		type {{$operationTypeName}}Call struct {
+			service *{{$portType}}
+			Request *soap.Request
+			Response *soap.Response
+
+			Action string
+			requestData *{{$requestType}}
+			ResponseData *{{$responseType}}
+			FaultData *{{$faultType}}
+		}
+
+		func (service *{{$portType}}) New{{$operationTypeName}}Call(reqData *{{$requestType}}) *{{$operationTypeName}}Call {
+			call := &{{$operationTypeName}}Call{
+				service: service,
+				requestData: reqData,
+				Action: "{{$soapAction}}",
+				ResponseData: &{{$responseType}}{},
+				FaultData: &{{$faultType}}{},
 			}
 
-			return response, fault, nil
+			call.Request = soap.NewRequest(call.Action, service.url, call.requestData, call.ResponseData, call.FaultData)
+			return call
+		}
+
+		func (c *{{$operationTypeName}}Call) Do(ctx context.Context) error {
+			var err error
+			c.Response, err = c.service.client.Do(ctx, c.Request)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 		{{/*end*/}}
 	{{end}}

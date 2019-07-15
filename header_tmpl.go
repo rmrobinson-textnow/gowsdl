@@ -9,10 +9,11 @@ var headerTmpl = `
 package {{.}}
 
 import (
+	"context"
 	"encoding/xml"
 	"time"
 
-	"golang.org/x/net/context"
+	"github.com/Enflick/gosoap"
 
 	{{/*range .Imports*/}}
 		{{/*.*/}}
@@ -24,8 +25,7 @@ var _ time.Time
 var _ xml.Name
 
 type Client interface {
-	AddSoapHeader(interface{})
-	Do(context.Context, string, interface{}, interface{}, interface{}) error
+	Do(context.Context, *soap.Request) (*soap.Response, error)
 }
 
 `
