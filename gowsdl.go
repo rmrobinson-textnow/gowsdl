@@ -524,6 +524,8 @@ func (g *GoWSDL) findFaultType(message string) string {
 
     if len(t) < 1 {
         t = "string"
+    } else {
+        t = replaceReservedWords(makePublic(t))
     }
 
     return t

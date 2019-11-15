@@ -138,6 +138,8 @@ var typesTmpl = `
 				{{if (and (ne $typeName "") (ne $typeName .Name))}}
 					// Element mapping found, will serialize using element name {{$typeName}} instead of {{.Name}}
 					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{$typeName}}\"`" + `
+				{{else}}
+					XMLName xml.Name ` + "`xml:\"{{$targetNamespace}} {{.Name}}\"`" + `
 				{{end}}
 
 				{{if ne .ComplexContent.Extension.Base ""}}

@@ -23,7 +23,7 @@ var opsTmpl = `
 		{{$soapAction := findSOAPAction .Name $portType}}
 		{{$requestType := findType .Input.Message | replaceReservedWords | makePublic}}
 		{{$responseType := findType .Output.Message | replaceReservedWords | makePublic}}
-		{{$faultType := findFaultType .Fault.Message | replaceReservedWords | makePublic}}
+		{{$faultType := findFaultType .Fault.Message}}
 		{{$operationTypeName := makePublic .Name | replaceReservedWords}}
 
 		{{/*if ne $soapAction ""*/}}
@@ -43,8 +43,8 @@ var opsTmpl = `
 				service: service,
 				requestData: reqData,
 				Action: "{{$soapAction}}",
-				ResponseData: &{{$responseType}}{},
-				FaultData: &{{$faultType}}{},
+				ResponseData: new({{$responseType}}),
+				FaultData: new({{$faultType}}),
 			}
 
 			call.Request = soap.NewRequest(call.Action, service.url, call.requestData, call.ResponseData, call.FaultData)

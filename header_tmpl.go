@@ -13,7 +13,7 @@ import (
 	"encoding/xml"
 	"time"
 
-	"github.com/Enflick/gosoap"
+	soap "github.com/Enflick/gosoap"
 
 	{{/*range .Imports*/}}
 		{{/*.*/}}
